@@ -1,31 +1,33 @@
-// Entry program for the make.fun bounty gta6-meme-x-01, third version.
+// make.fun bounty gta6-meme-x-01 — entry program, fourth version.
 //
-// What this program does is deliberately small: the entry itself is a
-// public post on X, and the file POST.json beside this program names
-// that post. Running the program delivers the pointer to the grader by
-// copying POST.json into the output directory as /output/POST.json.
+// The real entry lives on X: a public post whose first picture is the
+// eviction-notice meme. This repository only has to name that post for
+// the grader, and POST.json next to this file is the name tag. Running
+// the program copies POST.json into the output directory, where the
+// grader picks it up as /output/POST.json.
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const programDir = dirname(fileURLToPath(import.meta.url));
-const pointerFile = join(programDir, "POST.json");
-
-const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
-const deliveredFile = join(outputDir, "POST.json");
-
-if (!existsSync(pointerFile)) {
-  throw new Error(`cannot find POST.json next to the program: ${pointerFile}`);
+// POST.json sits beside this program file, wherever the repo was put.
+const here = dirname(fileURLToPath(import.meta.url));
+const tagFile = join(here, "POST.json");
+if (!existsSync(tagFile)) {
+  throw new Error(`POST.json is missing next to main.ts (looked in ${here})`);
 }
 
-mkdirSync(outputDir, { recursive: true });
-copyFileSync(pointerFile, deliveredFile);
+// The grader reads from /output unless MAKEFUN_OUTPUT_DIR says otherwise.
+const outDir = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
+mkdirSync(outDir, { recursive: true });
 
-// Read the delivered copy back and report the post it names, so a bad
-// pointer fails loudly here instead of silently at grading time.
-const named = JSON.parse(readFileSync(deliveredFile, "utf8")) as { url?: string };
-if (!named.url) {
-  throw new Error("the delivered POST.json does not name a post url");
+const delivered = join(outDir, "POST.json");
+copyFileSync(tagFile, delivered);
+
+// Prove the copy landed and really names a post before calling it done:
+// a pointer with no url in it would only fail later, at grading time.
+const check = JSON.parse(readFileSync(delivered, "utf8")) as { url?: unknown };
+if (typeof check.url !== "string" || check.url.length === 0) {
+  throw new Error("delivered POST.json carries no post url");
 }
-console.log(`delivered ${deliveredFile} -> ${named.url}`);
+console.log(`POST.json delivered to ${delivered}; post: ${check.url}`);
